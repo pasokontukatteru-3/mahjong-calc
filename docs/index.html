@@ -268,6 +268,7 @@ function calcFu(o) {
 // 精算。points: 起家順の持ち点, cfg: {ret, uma[], round, tie}。結果は 0.1pt 単位の整数
 function roundK(p, mode) {
   if (mode === 'none') return Math.round(p / 100);
+  if (mode === 'half') return (p < 0 ? -1 : 1) * Math.round(Math.abs(p) / 500) * 5; // 500点（0.5pt）刻み
   const s = p < 0 ? -1 : 1, k = Math.round(Math.abs(p) / 100), q = Math.floor(k / 10), r = k % 10;
   const up = mode === '5-6' ? r >= 6 : mode === '4-5' ? r >= 5 : mode === 'up' ? r > 0 : false;
   return s * (q + (up ? 1 : 0)) * 10;
@@ -549,7 +550,7 @@ function buildSettle() {
       return '<input id="c' + n + '_uma' + i + '" data-c="uma" data-i="' + i + '" type="number" value="' + u + '" aria-label="' + (i + 1) + '位のウマ">';
     }).join('') + '</div></div>' +
     '<div class="grid2"><label>端数<select id="c' + n + '_round" data-c="round">' +
-      [['none', '100点単位（小数1桁）'], ['5-6', '1,000点単位・五捨六入'], ['4-5', '1,000点単位・四捨五入'], ['up', '1,000点単位・切り上げ'], ['down', '1,000点単位・切り捨て']].map(function (o) {
+      [['none', '100点単位（0.1pt刻み）'], ['half', '500点単位（0.5pt刻み）'], ['5-6', '1,000点単位・五捨六入'], ['4-5', '1,000点単位・四捨五入'], ['up', '1,000点単位・切り上げ'], ['down', '1,000点単位・切り捨て']].map(function (o) {
         return '<option value="' + o[0] + '"' + (c.round === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
       }).join('') + '</select></label>' +
       '<label>同点のとき<select id="c' + n + '_tie" data-c="tie">' +
