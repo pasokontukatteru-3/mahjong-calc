@@ -107,7 +107,7 @@ details .seg button[aria-pressed="true"], details .chip[aria-pressed="true"] { b
 .calc { font-variant-numeric: tabular-nums; font-size: 13px; margin: 0; }
 .calc b { font-size: 15px; }
 
-.prow { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1.1fr) 16px; gap: 8px; align-items: center; }
+.prow { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1.1fr) auto; gap: 8px; align-items: center; }
 .seat { font-family: var(--display); font-weight: 800; color: var(--muted); text-align: center; }
 input, select { width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 6px 10px; }
 input.pt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 16px; }
@@ -148,6 +148,9 @@ td.x .ghost { min-height: 30px; padding: 2px 8px; }
 table.stats td { font-size: 14px; }
 table.stats td:first-child { color: var(--fg); font-size: 14px; font-weight: 700; }
 table.stats th, table.stats td { padding-inline: 5px; }
+.qr { background: #ffffff; padding: 10px; border-radius: 8px; width: min(100%, 240px); margin-inline: auto; }
+.qr svg { display: block; width: 100%; height: auto; }
+.qrurl { text-align: center; overflow-wrap: anywhere; user-select: all; }
 small.raw { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
 .hsum { display: block; margin-top: 4px; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .hsum .pts { margin-right: 8px; }
@@ -209,6 +212,22 @@ label, .lbl { display: flex; flex-direction: column; gap: 4px; font-size: 12px; 
   <section id="tab-history" class="stack" hidden></section>
 
   <section id="tab-score" class="stack" hidden></section>
+
+  <details id="d-app">
+    <summary>アプリの設定</summary>
+    <div class="body">
+      <div class="chips" id="appopts"></div>
+      <p class="note">1,000点単位は、100点棒・500点棒を使わない遊び方向けです。持ち点は千点単位で入力し（42 → 42,000点）、点数計算の支払いは1,000点に切り上げます。</p>
+    </div>
+  </details>
+  <details id="d-qr">
+    <summary>QRコードで共有</summary>
+    <div class="body">
+      <div class="qr"><svg role="img" aria-label="麻雀計算帳のQRコード" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 41 41" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h41v41H0z"/><path stroke="#000000" d="M4 4.5h7m3 0h2m1 0h2m1 0h5m2 0h1m2 0h7M4 5.5h1m5 0h1m4 0h1m1 0h5m3 0h2m3 0h1m5 0h1M4 6.5h1m1 0h3m1 0h1m1 0h2m3 0h1m1 0h1m1 0h2m1 0h5m1 0h1m1 0h3m1 0h1M4 7.5h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h1m1 0h1m3 0h1m1 0h3m1 0h1m1 0h3m1 0h1M4 8.5h1m1 0h3m1 0h1m1 0h4m3 0h1m2 0h1m4 0h2m1 0h1m1 0h3m1 0h1M4 9.5h1m5 0h1m1 0h2m4 0h3m3 0h1m1 0h1m3 0h1m5 0h1M4 10.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M12 11.5h1m2 0h1m3 0h1m5 0h3M4 12.5h1m1 0h5m2 0h7m1 0h1m2 0h1m1 0h1m1 0h1m1 0h5M4 13.5h1m1 0h1m1 0h1m4 0h2m1 0h1m3 0h1m2 0h3m1 0h1m2 0h2m1 0h2m1 0h1M5 14.5h1m2 0h5m2 0h2m2 0h2m1 0h1m9 0h1m1 0h1M7 15.5h1m3 0h2m1 0h1m1 0h1m1 0h1m1 0h1m3 0h4m1 0h1m2 0h3m1 0h1M4 16.5h3m2 0h2m5 0h1m2 0h1m2 0h1m3 0h4m1 0h3M4 17.5h3m1 0h1m2 0h1m2 0h3m1 0h3m3 0h1m2 0h1m2 0h1m2 0h1m1 0h2M4 18.5h1m1 0h6m2 0h2m1 0h2m2 0h3m2 0h1m1 0h3m4 0h1M5 19.5h1m3 0h1m3 0h1m6 0h1m1 0h4m1 0h1m1 0h2m1 0h3M4 20.5h1m3 0h3m2 0h3m1 0h1m3 0h1m1 0h2m1 0h4m1 0h2m3 0h1M5 21.5h1m1 0h2m3 0h1m1 0h2m1 0h1m2 0h2m1 0h5m1 0h3m1 0h2m1 0h1M5 22.5h3m2 0h2m2 0h1m2 0h1m1 0h1m1 0h1m2 0h2m4 0h3m1 0h2M4 23.5h1m1 0h1m2 0h1m1 0h1m3 0h1m2 0h1m1 0h3m2 0h4m2 0h5M8 24.5h1m1 0h2m1 0h1m2 0h1m1 0h1m1 0h1m5 0h1m1 0h2m1 0h3m1 0h1M4 25.5h1m1 0h2m5 0h2m2 0h1m1 0h1m2 0h1m2 0h1m1 0h1m2 0h1m5 0h1M4 26.5h1m1 0h3m1 0h1m2 0h5m1 0h2m3 0h3m5 0h4M4 27.5h1m1 0h1m5 0h1m4 0h1m1 0h1m3 0h3m1 0h1m4 0h3m1 0h1M4 28.5h1m5 0h1m2 0h2m1 0h4m1 0h3m2 0h7M12 29.5h3m3 0h1m3 0h3m1 0h3m3 0h1m1 0h3M4 30.5h7m4 0h1m1 0h1m1 0h2m1 0h1m1 0h5m1 0h1m1 0h1m1 0h2M4 31.5h1m5 0h1m1 0h4m1 0h1m5 0h1m1 0h1m1 0h2m3 0h3M4 32.5h1m1 0h3m1 0h1m1 0h1m1 0h2m3 0h1m2 0h2m2 0h1m1 0h6m2 0h1M4 33.5h1m1 0h3m1 0h1m1 0h4m1 0h5m1 0h1m1 0h1m1 0h3m2 0h2m1 0h2M4 34.5h1m1 0h3m1 0h1m1 0h1m2 0h1m2 0h1m5 0h3m1 0h1m1 0h2m1 0h1M4 35.5h1m5 0h1m3 0h1m2 0h2m1 0h1m2 0h1m1 0h2m3 0h1m1 0h1m1 0h1M4 36.5h7m1 0h1m2 0h1m1 0h2m1 0h3m3 0h3m1 0h2m3 0h1"/></svg></div>
+      <p class="note qrurl">https://pasokontukatteru-3.github.io/mahjong-calc/</p>
+      <p class="note">カメラで読み取るとこのアプリが開きます。ホーム画面に追加すれば電波がなくても使えます。名前や記録は端末ごとに別々です。</p>
+    </div>
+  </details>
 </div>
 
 <script id="logic">
@@ -235,8 +254,9 @@ function basePoints(han, fu, o) {
 // 支払い。o: {han, fu, yakuman, dealer, tsumo, honba, players, tsumoZon, kiriage, kazoe}
 function calcPayment(o) {
   const bp = basePoints(o.han, o.fu, o), base = bp.base, hb = o.honba || 0;
+  const up = function (x) { return o.unit1000 ? Math.ceil(x / 1000) * 1000 : x; }; // 100・500点棒なし
   if (!o.tsumo) {
-    return { base: base, label: bp.label, total: ceil100(base * (o.dealer ? 6 : 4)) + 300 * hb };
+    return { base: base, label: bp.label, total: up(ceil100(base * (o.dealer ? 6 : 4)) + 300 * hb) };
   }
   let d, c;
   if (o.players === 3 && !o.tsumoZon) { // 抜けた1人分を折半
@@ -246,8 +266,8 @@ function calcPayment(o) {
     d = 2 * base;
     c = o.dealer ? 2 * base : base;
   }
-  d = ceil100(d) + 100 * hb;
-  c = ceil100(c) + 100 * hb;
+  d = up(ceil100(d) + 100 * hb);
+  c = up(ceil100(c) + 100 * hb);
   const payers = o.players - 1;
   return {
     base: base, label: bp.label,
@@ -357,6 +377,7 @@ const S = {
   cfg: { 4: defCfg(4), 3: defCfg(3) },
   ses: { 4: { names: ['A', 'B', 'C', 'D'], games: [], chips: [0, 0, 0, 0] }, 3: { names: ['A', 'B', 'C'], games: [], chips: [0, 0, 0] } },
   roster: [], editName: null, archive: [],
+  opts: { unit1000: true, scoreTab: false },
   arm: null, pending: null
 };
 
@@ -370,6 +391,7 @@ const S = {
     if (!j) return;
     if (j.players === 3 || j.players === 4) S.players = j.players;
     Object.assign(S.rules, j.rules || {});
+    Object.assign(S.opts, j.opts || {});
     [3, 4].forEach(function (n) {
       if (j.cfg && j.cfg[n]) Object.assign(S.cfg[n], j.cfg[n]);
       if (!Array.isArray(S.cfg[n].uma) || S.cfg[n].uma.length !== n) S.cfg[n].uma = defCfg(n).uma;
@@ -388,7 +410,7 @@ const S = {
 })();
 function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ players: S.players, rules: S.rules, cfg: S.cfg, ses: S.ses, roster: S.roster, archive: S.archive }));
+    localStorage.setItem(KEY, JSON.stringify({ players: S.players, rules: S.rules, cfg: S.cfg, ses: S.ses, roster: S.roster, archive: S.archive, opts: S.opts }));
   } catch (e) {}
 }
 
@@ -453,7 +475,7 @@ function renderScore() {
   } else {
     const r = calcPayment({
       han: han, fu: fu, yakuman: ymN, dealer: S.dealer, tsumo: S.tsumo, honba: S.honba, players: S.players,
-      tsumoZon: S.rules.tsumoZon, kiriage: S.rules.kiriage, kazoe: S.rules.kazoe
+      tsumoZon: S.rules.tsumoZon, kiriage: S.rules.kiriage, kazoe: S.rules.kazoe, unit1000: S.opts.unit1000
     });
     limit = r.label;
     head = who + '　' + (ym ? '' : han + '翻' + (fuMatters ? fu + '符' : ''));
@@ -473,6 +495,7 @@ function renderScore() {
       if (fu === 25 && S.tsumo && han < 3) warns.push('七対子のツモは3翻以上になります。');
     }
   }
+  if (S.opts.unit1000 && (ym || han >= 1)) sub += '　※1,000点単位に切り上げ';
   if (ya && !ym && yakuHan() === 0) warns.push('ドラだけでは和了れません。役を1つ以上選んでください。');
 
   const m = S.melds, mc = meldCount(), fi = fuInfo(), forced = fuForced();
@@ -548,7 +571,7 @@ function buildSettle() {
   $('#rows').innerHTML = ses.names.map(function (nm, i) {
     return '<div class="prow"><span class="seat">' + SEATS[i] + '</span><span class="nmw" id="nmw' + i + '"></span>' +
       '<input class="pt" id="pt' + n + '_' + i + '" data-i="' + i + '" inputmode="numeric" autocomplete="off" aria-label="' + SEATS[i] + '家の持ち点">' +
-      '<span class="unit">点</span></div>';
+      '<span class="unit">' + (S.opts.unit1000 ? ',000点' : '点') + '</span></div>';
   }).join('');
   renderNames();
   $('#chips').innerHTML = '<div id="chiprows" class="stack" style="gap:8px"></div>' +
@@ -702,17 +725,21 @@ function parsePt(v) {
 function renderSettle() {
   const n = S.players, ses = S.ses[n], c = S.cfg[n], total = c.start * n;
   const inputs = Array.from(document.querySelectorAll('#rows .pt'));
-  const vals = inputs.map(function (el) { return parsePt(el.value); });
+  const u1000 = S.opts.unit1000, unit = u1000 ? 1000 : 100;
+  const vals = inputs.map(function (el) { // 千点単位モードでも 42000 のように打たれたらそのまま点数として扱う
+    const v = parsePt(el.value);
+    return v === null || isNaN(v) || !u1000 || Math.abs(v) >= 1000 ? v : v * 1000;
+  });
   const blanks = vals.filter(function (v) { return v === null; }).length;
-  const bad = vals.some(function (v) { return v !== null && (isNaN(v) || v % 100 !== 0); });
+  const bad = vals.some(function (v) { return v !== null && (isNaN(v) || v % unit !== 0); });
   const known = vals.reduce(function (s, v) { return s + (v || 0); }, 0);
-  inputs.forEach(function (el, i) { el.placeholder = blanks === 1 && vals[i] === null && !bad ? fmt(total - known) : ''; });
+  inputs.forEach(function (el, i) { el.placeholder = blanks === 1 && vals[i] === null && !bad ? fmt((total - known) / (u1000 ? 1000 : 1)) : ''; });
 
   const sum = $('#sum'), pv = $('#preview');
   S.pending = null;
   let msg = '', isBad = false;
-  if (bad) { msg = '100点単位の数字で入力してください'; isBad = true; }
-  else if (blanks > 1) msg = blanks === n ? '最後の1人は空欄でも自動で埋まります' : 'あと' + (blanks - 1) + '人分を入力';
+  if (bad) { msg = u1000 ? '千点単位の整数で入力してください（42 → 42,000点）' : '100点単位の数字で入力してください'; isBad = true; }
+  else if (blanks > 1) msg = blanks === n ? (u1000 ? '千点単位で入力（42 → 42,000点）。' : '') + '最後の1人は空欄で可' : 'あと' + (blanks - 1) + '人分を入力';
   else {
     const pts = vals.map(function (v) { return v === null ? total - known : v; });
     const s = pts.reduce(function (a, b) { return a + b; }, 0);
@@ -813,6 +840,11 @@ const A = {
     if (S.arm !== 'hdel' + v) { S.arm = 'hdel' + v; return; }
     S.archive = S.archive.filter(function (a) { return String(a.id) !== String(v); }); S.arm = null;
   },
+  opt: function (v) {
+    S.opts[v] = !S.opts[v];
+    if (v === 'unit1000') buildSettle();
+    if (!S.opts.scoreTab && S.tab === 'score') S.tab = 'settle';
+  },
   chip: function (v) {
     const p = v.split(':'), ch = S.ses[S.players].chips;
     ch[Number(p[0])] = clamp(ch[Number(p[0])] + Number(p[1]), -999, 999);
@@ -825,7 +857,14 @@ function dropDoubles() { if (!S.rules.wYakuman) for (const id in S.ym) if (YMM[i
 
 function render(focusKey) {
   $('#mode').innerHTML = seg('players', [[4, '四麻'], [3, '三麻']], S.players);
-  document.querySelectorAll('#tabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.v === S.tab); });
+  if (!S.opts.scoreTab && S.tab === 'score') S.tab = 'settle';
+  document.querySelectorAll('#tabs button').forEach(function (b) {
+    b.setAttribute('aria-pressed', b.dataset.v === S.tab);
+    if (b.dataset.v === 'score') b.hidden = !S.opts.scoreTab;
+  });
+  $('#appopts').innerHTML =
+    '<button type="button" class="chip" data-a="opt" data-v="unit1000" aria-pressed="' + S.opts.unit1000 + '">1,000点単位<small>100・500点棒なし</small></button>' +
+    '<button type="button" class="chip" data-a="opt" data-v="scoreTab" aria-pressed="' + S.opts.scoreTab + '">点数計算タブ<small>符・翻から和了点を出す</small></button>';
   $('#tab-score').hidden = S.tab !== 'score';
   $('#tab-settle').hidden = S.tab !== 'settle';
   $('#tab-history').hidden = S.tab !== 'history';

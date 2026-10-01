@@ -6,3 +6,4 @@ node_modules/
 *.p8
 .DS_Store
 Thumbs.db
+qr.png
