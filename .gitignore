@@ -1,0 +1,8 @@
+node_modules/
+.claude/
+.env*
+*.key
+*.pem
+*.p8
+.DS_Store
+Thumbs.db

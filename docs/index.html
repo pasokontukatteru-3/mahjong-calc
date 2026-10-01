@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c5f43">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="麻雀計算帳">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>:root { padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }</style>
+<title>麻雀計算帳</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* 卓の脇に置く1カラムの道具。結果は緑のラシャ面、操作は象牙色の牌面に載せる */
+:root {
+  --bg: #e9eee8;
+  --surface: #fbfaf4;
+  --fg: #16231c;
+  --muted: #5a6a61;
+  --line: #cbd5cb;
+  --felt: #1f6b4a;
+  --felt-ink: #fbfaf4;
+  --panel: #1c5f43;
+  --panel-fg: #f7f4e6;
+  --panel-muted: #bcd6c6;
+  --red: #b3261e;
+  --warn-bg: #fbeecb;
+  --warn-fg: #6b4700;
+  --display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1814; --surface: #17261f; --fg: #e8efe9; --muted: #9db0a5; --line: #2d4338;
+    --felt: #58b98c; --felt-ink: #07130d; --panel: #1d5a40; --panel-fg: #f7f4e6; --panel-muted: #b3d1bf;
+    --red: #ff8274; --warn-bg: #3d3110; --warn-fg: #f1cf7c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1814; --surface: #17261f; --fg: #e8efe9; --muted: #9db0a5; --line: #2d4338;
+  --felt: #58b98c; --felt-ink: #07130d; --panel: #1d5a40; --panel-fg: #f7f4e6; --panel-muted: #b3d1bf;
+  --red: #ff8274; --warn-bg: #3d3110; --warn-fg: #f1cf7c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.app { max-width: 540px; margin: 0 auto; padding-inline: 16px; padding-block: 14px 40px; display: flex; flex-direction: column; gap: 12px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--felt); outline-offset: 2px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--display); font-weight: 800; font-size: 22px; margin: 0; letter-spacing: .04em; }
+h2 { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0; letter-spacing: .06em; }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; min-height: 42px; padding: 6px 10px; font-weight: 500; border-left: 1px solid var(--line); }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--felt); color: var(--felt-ink); font-weight: 700; }
+.top .seg button { min-height: 34px; padding-inline: 14px; }
+.tabs button { min-height: 44px; font-size: 16px; }
+
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 10px; }
+.row > h2 { line-height: 1.3; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--felt); border: 1px solid var(--felt); border-radius: 4px; padding: 0 4px; margin-top: 2px; letter-spacing: 0; }
+
+.result { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--panel); color: var(--panel-fg); border-radius: var(--r); padding: 12px 16px 14px; }
+.result .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; color: var(--panel-muted); }
+.result .limit { font-family: var(--display); font-weight: 800; font-size: 16px; color: var(--panel-fg); }
+.result .num { font-family: var(--display); font-weight: 800; font-size: clamp(34px, 11vw, 48px); line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.result .num small { font-size: .42em; margin-left: 2px; }
+.result .sub { font-size: 13px; color: var(--panel-muted); font-variant-numeric: tabular-nums; }
+
+.stepper { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; align-items: center; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow: hidden; }
+.stepper button { border: 0; background: none; min-height: 42px; font-size: 20px; font-weight: 700; color: var(--felt); }
+.stepper button:disabled { color: var(--line); cursor: default; }
+.stepper output { text-align: center; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+.stepper.mini { grid-template-columns: 34px minmax(0, 1fr) 34px; }
+.stepper.mini button { min-height: 36px; font-size: 17px; }
+.stepper.mini output { font-size: 15px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; min-height: 38px; padding: 4px 10px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.chip small { color: var(--muted); margin-left: 4px; font-size: 11px; }
+.chip[aria-pressed="true"] { background: var(--felt); border-color: var(--felt); color: var(--felt-ink); font-weight: 700; }
+.chip[aria-pressed="true"] small { color: inherit; }
+.chip:disabled { opacity: .4; cursor: default; }
+.fu .chip { min-width: 46px; }
+.dim { opacity: .45; }
+
+.note { font-size: 12.5px; color: var(--muted); margin: 0; }
+.warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 8px; padding: 6px 10px; font-size: 13px; margin: 0; }
+
+details { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+summary { cursor: pointer; padding: 11px 14px; font-weight: 700; list-style-position: inside; }
+details > .body { padding: 2px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+details .seg, details .stepper, details .chip { background: var(--bg); }
+details .seg button[aria-pressed="true"], details .chip[aria-pressed="true"] { background: var(--felt); }
+
+.melds { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr); gap: 6px 8px; align-items: center; font-size: 13px; }
+.melds .hd { color: var(--muted); font-size: 12px; text-align: center; }
+.calc { font-variant-numeric: tabular-nums; font-size: 13px; margin: 0; }
+.calc b { font-size: 15px; }
+
+.prow { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1.1fr) 16px; gap: 8px; align-items: center; }
+.seat { font-family: var(--display); font-weight: 800; color: var(--muted); text-align: center; }
+input, select { width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 6px 10px; }
+input.pt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 16px; }
+input.nm { font-size: 16px; }
+details input, details select { background: var(--bg); font-size: 16px; }
+.unit { color: var(--muted); font-size: 12px; }
+.nmw { min-width: 0; }
+select.nm { font-size: 16px; }
+.crow { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 8px; align-items: center; }
+.crow .nmv { overflow-wrap: anywhere; }
+.addrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.addrow .ghost { min-height: 42px; }
+tfoot tr.sub td { font-size: 13px; font-weight: 500; }
+.sum { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sum.bad { color: var(--red); font-weight: 700; }
+
+.preview { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.preview li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 7px 2px; border-bottom: 1px solid var(--line); }
+.preview .rk { color: var(--muted); font-size: 12px; }
+.preview .nmv { overflow-wrap: anywhere; }
+.pts { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.neg { color: var(--red); }
+
+.primary { border: 0; border-radius: var(--r); background: var(--felt); color: var(--felt-ink); font-weight: 700; min-height: 46px; font-size: 16px; }
+.primary:disabled { opacity: .4; cursor: default; }
+.ghost { border: 1px solid var(--line); background: none; border-radius: 8px; min-height: 36px; padding: 4px 12px; color: var(--muted); font-size: 13px; }
+.ghost.armed { border-color: var(--red); color: var(--red); font-weight: 700; }
+
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; color: var(--muted); font-weight: 700; }
+th:first-child, td:first-child { text-align: left; color: var(--muted); font-size: 12px; }
+tfoot td { font-weight: 700; font-size: 16px; border-bottom: 0; }
+tfoot tr.yen td { font-size: 13px; font-weight: 500; padding-top: 0; }
+td.x { width: 1%; padding-right: 0; }
+td.x .ghost { min-height: 30px; padding: 2px 8px; }
+.empty { border: 1px dashed var(--line); border-radius: var(--r); padding: 16px; color: var(--muted); font-size: 13px; text-align: center; margin: 0; }
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.grid3 .seg button { padding-inline: 4px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.uma { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 6px; }
+label, .lbl { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>麻雀計算帳</h1>
+    <div id="mode"></div>
+  </header>
+  <nav class="seg tabs" id="tabs" aria-label="画面の切り替え">
+    <button type="button" data-a="tab" data-v="settle">精算</button>
+    <button type="button" data-a="tab" data-v="score">点数計算</button>
+  </nav>
+
+  <section id="tab-settle" class="stack">
+    <div class="stack">
+      <h2>終了時の持ち点（起家から順に）</h2>
+      <div id="rows" class="stack" style="gap:8px"></div>
+      <div id="sum" class="sum"></div>
+      <ul id="preview" class="preview"></ul>
+      <button type="button" class="primary" id="rec" data-a="record" data-v="">この半荘を記録</button>
+    </div>
+    <div class="stack">
+      <div class="bar"><h2>記録</h2><span id="resetwrap"></span></div>
+      <div id="history"></div>
+    </div>
+    <details id="d-chip">
+      <summary>チップ</summary>
+      <div class="body" id="chips"></div>
+    </details>
+    <details id="d-member">
+      <summary>メンバー</summary>
+      <div class="body">
+        <div id="memberlist" class="chips"></div>
+        <div class="addrow">
+          <input id="newname" maxlength="10" placeholder="名前を入力" aria-label="追加する名前" autocomplete="off">
+          <button type="button" class="ghost" data-a="addName" data-v="">追加</button>
+        </div>
+        <p class="note">登録した名前は、持ち点の入力欄の名前から選べます。この端末に保存されます。</p>
+      </div>
+    </details>
+    <details id="d-cfg">
+      <summary>精算ルール</summary>
+      <div class="body" id="cfg"></div>
+    </details>
+  </section>
+
+  <section id="tab-score" class="stack" hidden></section>
+</div>
+
+<script id="logic">
+// ---- 計算ロジック（DOM に触れない） ----
+function ceil100(x) { return Math.ceil(x / 100 - 1e-9) * 100; }
+
+// 基本点。han: 翻, fu: 符, o: {yakuman, kiriage, kazoe}
+function basePoints(han, fu, o) {
+  o = o || {};
+  if (o.yakuman > 0) {
+    const names = ['役満', 'ダブル役満', 'トリプル役満'];
+    return { base: 8000 * o.yakuman, label: names[o.yakuman - 1] || o.yakuman + '倍役満' };
+  }
+  if (han >= 13) return o.kazoe === false ? { base: 6000, label: '三倍満' } : { base: 8000, label: '数え役満' };
+  if (han >= 11) return { base: 6000, label: '三倍満' };
+  if (han >= 8) return { base: 4000, label: '倍満' };
+  if (han >= 6) return { base: 3000, label: '跳満' };
+  if (han >= 5) return { base: 2000, label: '満貫' };
+  const b = fu * Math.pow(2, han + 2);
+  if (b >= 2000 || (o.kiriage && b >= 1920)) return { base: 2000, label: '満貫' };
+  return { base: b, label: '' };
+}
+
+// 支払い。o: {han, fu, yakuman, dealer, tsumo, honba, players, tsumoZon, kiriage, kazoe}
+function calcPayment(o) {
+  const bp = basePoints(o.han, o.fu, o), base = bp.base, hb = o.honba || 0;
+  if (!o.tsumo) {
+    return { base: base, label: bp.label, total: ceil100(base * (o.dealer ? 6 : 4)) + 300 * hb };
+  }
+  let d, c;
+  if (o.players === 3 && !o.tsumoZon) { // 抜けた1人分を折半
+    d = o.dealer ? 3 * base : 2.5 * base;
+    c = o.dealer ? 3 * base : 1.5 * base;
+  } else {
+    d = 2 * base;
+    c = o.dealer ? 2 * base : base;
+  }
+  d = ceil100(d) + 100 * hb;
+  c = ceil100(c) + 100 * hb;
+  const payers = o.players - 1;
+  return {
+    base: base, label: bp.label,
+    total: o.dealer ? c * payers : d + c * (payers - 1),
+    fromDealer: o.dealer ? null : d, fromChild: c
+  };
+}
+
+// 符。o: {menzen, tsumo, melds:{mk_s,mk_y,ak_s,ak_y,mg_s,mg_y,ag_s,ag_y}, pair, wait}
+const MELD_FU = { mk_s: 2, mk_y: 4, ak_s: 4, ak_y: 8, mg_s: 8, mg_y: 16, ag_s: 16, ag_y: 32 };
+function calcFu(o) {
+  const parts = [['副底', 20]];
+  let meld = 0;
+  for (const k in MELD_FU) meld += MELD_FU[k] * ((o.melds && o.melds[k]) || 0);
+  if (meld) parts.push(['面子', meld]);
+  if (o.pair) parts.push(['雀頭', o.pair]);
+  if (o.wait) parts.push(['待ち', 2]);
+  const extra = meld + (o.pair || 0) + (o.wait ? 2 : 0);
+  if (o.tsumo) {
+    if (!(o.menzen && extra === 0)) parts.push(['ツモ', 2]); // 平和ツモは付かない
+  } else if (o.menzen) parts.push(['門前ロン', 10]);
+  let raw = parts.reduce(function (s, p) { return s + p[1]; }, 0);
+  let fu = Math.ceil(raw / 10) * 10;
+  if (!o.menzen && raw === 20) fu = 30; // 副露した平和形
+  return { fu: fu, raw: raw, parts: parts };
+}
+
+// 精算。points: 起家順の持ち点, cfg: {ret, uma[], round, tie}。結果は 0.1pt 単位の整数
+function roundK(p, mode) {
+  if (mode === 'none') return Math.round(p / 100);
+  const s = p < 0 ? -1 : 1, k = Math.round(Math.abs(p) / 100), q = Math.floor(k / 10), r = k % 10;
+  const up = mode === '5-6' ? r >= 6 : mode === '4-5' ? r >= 5 : mode === 'up' ? r > 0 : false;
+  return s * (q + (up ? 1 : 0)) * 10;
+}
+function settle(points, cfg) {
+  const n = points.length;
+  const order = points.map(function (p, i) { return i; }).sort(function (a, b) { return points[b] - points[a] || a - b; });
+  const res = new Array(n).fill(0), rank = new Array(n);
+  let others = 0;
+  order.forEach(function (i, k) {
+    rank[i] = k + 1;
+    if (k > 0) { res[i] = roundK(points[i], cfg.round) - Math.round(cfg.ret / 100); others += res[i]; }
+  });
+  res[order[0]] = -others; // トップはオカ込みで帳尻を合わせる
+  order.forEach(function (i, k) { res[i] += Math.round((Number(cfg.uma[k]) || 0) * 10); });
+  if (cfg.tie === 'split') { // 同点は順位点（オカ含む）を等分。割り切れない0.1ptは起家に近い人へ
+    let k = 0;
+    while (k < n) {
+      let e = k;
+      while (e + 1 < n && points[order[e + 1]] === points[order[k]]) e++;
+      if (e > k) {
+        const m = e - k + 1;
+        let sum = 0;
+        for (let j = k; j <= e; j++) sum += res[order[j]];
+        const q = Math.floor(sum / m);
+        let rem = sum - q * m;
+        for (let j = k; j <= e; j++) { res[order[j]] = q + (rem > 0 ? 1 : 0); rem--; rank[order[j]] = k + 1; }
+      }
+      k = e + 1;
+    }
+  }
+  return { res: res, rank: rank, order: order };
+}
+</script>
+
+<script>
+// ---- 画面 ----
+const KEY = 'mahjong-calc-v2';
+const YAKU = [
+  ['riichi', '立直', 1, 0], ['double', 'ダブル立直', 2, 0], ['ippatsu', '一発', 1, 0], ['pinfu', '平和', 1, 0],
+  ['tanyao', '断么九', 1, 1], ['iipeiko', '一盃口', 1, 0], ['haitei', '海底・河底', 1, 1], ['rinshan', '嶺上開花', 1, 1],
+  ['chankan', '槍槓', 1, 1], ['chiitoi', '七対子', 2, 0], ['toitoi', '対々和', 2, 2], ['sananko', '三暗刻', 2, 2],
+  ['sandoko', '三色同刻', 2, 2], ['sankantsu', '三槓子', 2, 2], ['shosangen', '小三元', 2, 2], ['honroto', '混老頭', 2, 2],
+  ['sanshoku', '三色同順', 2, 1], ['ittsu', '一気通貫', 2, 1], ['chanta', '混全帯么九', 2, 1], ['ryanpeiko', '二盃口', 3, 0],
+  ['junchan', '純全帯么九', 3, 2], ['honitsu', '混一色', 3, 2], ['chinitsu', '清一色', 6, 5]
+];
+const YM = {};
+YAKU.forEach(function (y) { YM[y[0]] = { name: y[1], c: y[2], o: y[3] }; });
+const EXCL = [['riichi', 'double'], ['iipeiko', 'ryanpeiko'], ['chanta', 'junchan'], ['honitsu', 'chinitsu']];
+// [id, 名前, 鳴いても成立するか, ダブル役満ルール時の倍数, ダブル役満ルール時だけ出すか]
+const YAKUMAN = [
+  ['kokushi', '国士無双', 0, 1], ['kokushi13', '国士無双十三面', 0, 2, 1], ['suanko', '四暗刻', 0, 1], ['suankotanki', '四暗刻単騎', 0, 2, 1],
+  ['daisangen', '大三元', 1, 1], ['tsuiso', '字一色', 1, 1], ['ryuiso', '緑一色', 1, 1], ['chinroto', '清老頭', 1, 1],
+  ['shosushi', '小四喜', 1, 1], ['daisushi', '大四喜', 1, 2], ['sukantsu', '四槓子', 1, 1],
+  ['churen', '九蓮宝燈', 0, 1], ['junchuren', '純正九蓮宝燈', 0, 2, 1], ['tenho', '天和・地和', 0, 1]
+];
+const YMM = {};
+YAKUMAN.forEach(function (y) { YMM[y[0]] = { open: y[2], w: y[3], only: y[4] }; });
+const YM_EXCL = [['kokushi', 'kokushi13'], ['suanko', 'suankotanki'], ['churen', 'junchuren'], ['shosushi', 'daisushi']];
+// 初期値は Mリーグ公式ルール基準（三麻の精算だけは一般的な値）
+function mRules() { return { kiriage: true, kazoe: false, wYakuman: false, renpu4: false }; }
+function defCfg(n) {
+  return n === 4
+    ? { start: 25000, ret: 30000, uma: [30, 10, -10, -30], round: 'none', tie: 'split', rate: 0, chipPt: 2 }
+    : { start: 35000, ret: 40000, uma: [20, 0, -20], round: 'none', tie: 'seat', rate: 0, chipPt: 2 };
+}
+const FUS = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110];
+const SEATS = '東南西北';
+
+const S = {
+  tab: 'settle', players: 4,
+  dealer: false, tsumo: false, menzen: true, han: 3, fu: 30, honba: 0,
+  fuAuto: false, melds: { mk_s: 0, mk_y: 0, ak_s: 0, ak_y: 0, mg_s: 0, mg_y: 0, ag_s: 0, ag_y: 0 }, pair: 0, wait: false,
+  yaku: {}, ym: {}, yakuhai: 0, dora: 0,
+  rules: Object.assign(mRules(), { tsumoZon: true }),
+  cfg: { 4: defCfg(4), 3: defCfg(3) },
+  ses: { 4: { names: ['A', 'B', 'C', 'D'], games: [], chips: [0, 0, 0, 0] }, 3: { names: ['A', 'B', 'C'], games: [], chips: [0, 0, 0] } },
+  roster: [], editName: null,
+  arm: null, pending: null
+};
+
+(function load() {
+  try {
+    let j = JSON.parse(localStorage.getItem(KEY));
+    if (!j) {
+      const old = JSON.parse(localStorage.getItem('mahjong-calc-v1'));
+      if (old) j = { players: old.players, ses: old.ses };
+    }
+    if (!j) return;
+    if (j.players === 3 || j.players === 4) S.players = j.players;
+    Object.assign(S.rules, j.rules || {});
+    [3, 4].forEach(function (n) {
+      if (j.cfg && j.cfg[n]) Object.assign(S.cfg[n], j.cfg[n]);
+      if (!Array.isArray(S.cfg[n].uma) || S.cfg[n].uma.length !== n) S.cfg[n].uma = defCfg(n).uma;
+      const s = j.ses && j.ses[n];
+      if (s && Array.isArray(s.names) && s.names.length === n && Array.isArray(s.games)) S.ses[n] = s;
+      if (!Array.isArray(S.ses[n].chips) || S.ses[n].chips.length !== n) S.ses[n].chips = new Array(n).fill(0);
+    });
+    if (Array.isArray(j.roster)) S.roster = j.roster.filter(function (x) { return typeof x === 'string' && x; });
+    else [4, 3].forEach(function (n) { // 以前の版で付けた名前を引き継ぐ
+      S.ses[n].names.forEach(function (nm, i) { if (nm !== 'ABCD'[i] && S.roster.indexOf(nm) < 0) S.roster.push(nm); });
+    });
+  } catch (e) {}
+  if (location.hash === '#settle') S.tab = 'settle';
+  if (location.hash === '#score') S.tab = 'score';
+})();
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ players: S.players, rules: S.rules, cfg: S.cfg, ses: S.ses, roster: S.roster }));
+  } catch (e) {}
+}
+
+const $ = function (q) { return document.querySelector(q); };
+const fmt = function (n) { return Number(n).toLocaleString('ja-JP'); };
+const esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
+const clamp = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+// 0.1pt 単位の整数 → 表示。マイナスは ▲
+function fmtPt(t) {
+  const a = Math.abs(t), s = a % 10 === 0 ? String(a / 10) : (a / 10).toFixed(1);
+  return (t < 0 ? '▲' : t > 0 ? '+' : '') + s;
+}
+function ptCell(t, suffix) { return '<span class="pts' + (t < 0 ? ' neg' : '') + '">' + fmtPt(t) + (suffix || '') + '</span>'; }
+
+function seg(a, opts, cur) {
+  return '<div class="seg" role="group">' + opts.map(function (o) {
+    return '<button type="button" data-a="' + a + '" data-v="' + o[0] + '" aria-pressed="' + (String(o[0]) === String(cur)) + '">' + o[1] + '</button>';
+  }).join('') + '</div>';
+}
+function stepper(a, label, canDown, canUp, mini, key) {
+  const k = key ? key + ':' : '';
+  return '<div class="stepper' + (mini ? ' mini' : '') + '">' +
+    '<button type="button" data-a="' + a + '" data-v="' + k + '-1" aria-label="減らす"' + (canDown ? '' : ' disabled') + '>−</button>' +
+    '<output>' + label + '</output>' +
+    '<button type="button" data-a="' + a + '" data-v="' + k + '1" aria-label="増やす"' + (canUp ? '' : ' disabled') + '>＋</button></div>';
+}
+
+// ---- 点数計算 ----
+function yakuActive() { return Object.keys(S.yaku).length > 0 || S.yakuhai > 0 || S.dora > 0; }
+function yakuHan() {
+  let h = S.yakuhai + (S.menzen && S.tsumo ? 1 : 0);
+  for (const id in S.yaku) h += S.menzen ? YM[id].c : YM[id].o;
+  return h;
+}
+function effHan() { return yakuActive() ? yakuHan() + S.dora : S.han; }
+function fuForced() { return S.yaku.chiitoi ? '七対子は25符固定' : S.yaku.pinfu ? '平和はツモ20符・ロン30符' : ''; }
+function pairFu() { return S.pair === 2 ? (S.rules.renpu4 ? 4 : 2) : S.pair === 1 ? 2 : 0; }
+function fuInfo() { return calcFu({ menzen: S.menzen, tsumo: S.tsumo, melds: S.melds, pair: pairFu(), wait: S.wait }); }
+function ymCount() {
+  let c = 0;
+  for (const id in S.ym) c += S.rules.wYakuman ? YMM[id].w : 1;
+  return c;
+}
+function effFu() {
+  if (S.yaku.chiitoi) return 25;
+  if (S.yaku.pinfu) return S.tsumo ? 20 : 30;
+  return S.fuAuto ? fuInfo().fu : S.fu;
+}
+function meldCount() { let n = 0; for (const k in S.melds) n += S.melds[k]; return n; }
+
+function renderScore() {
+  const root = $('#tab-score'), open = {};
+  root.querySelectorAll('details').forEach(function (d) { open[d.id] = d.open; });
+  const han = effHan(), fu = effFu(), ya = yakuActive(), ymN = ymCount(), ym = ymN > 0;
+  const fuMatters = !ym && han < 5;
+  const who = (S.dealer ? '親' : '子') + 'の' + (S.tsumo ? 'ツモ' : 'ロン') + '・' + (S.menzen ? '門前' : '鳴き');
+  let num, sub, limit = '', head = who;
+  const warns = [];
+
+  if (!ym && han < 1) {
+    num = '—'; sub = '役を選ぶか、翻数を入れてください';
+  } else {
+    const r = calcPayment({
+      han: han, fu: fu, yakuman: ymN, dealer: S.dealer, tsumo: S.tsumo, honba: S.honba, players: S.players,
+      tsumoZon: S.rules.tsumoZon, kiriage: S.rules.kiriage, kazoe: S.rules.kazoe
+    });
+    limit = r.label;
+    head = who + '　' + (ym ? '' : han + '翻' + (fuMatters ? fu + '符' : ''));
+    if (!S.tsumo) {
+      num = fmt(r.total) + '<small>点</small>';
+      sub = '放銃者が支払う' + (S.honba ? '（' + S.honba + '本場込み）' : '');
+    } else if (S.dealer) {
+      num = fmt(r.fromChild) + '<small>点オール</small>';
+      sub = '合計 ' + fmt(r.total) + '点' + (S.honba ? '（' + S.honba + '本場込み）' : '');
+    } else {
+      num = fmt(r.fromChild) + '<small>・</small>' + fmt(r.fromDealer) + '<small>点</small>';
+      sub = '子 ' + fmt(r.fromChild) + '点 ／ 親 ' + fmt(r.fromDealer) + '点　合計 ' + fmt(r.total) + '点' + (S.honba ? '（' + S.honba + '本場込み）' : '');
+    }
+    if (fuMatters) {
+      if (fu === 20 && !S.tsumo) warns.push('20符のロン和了はありません。門前ロンは30符以上です。');
+      if ((fu === 20 || fu === 25) && han < 2) warns.push(fu + '符は2翻以上の手にしか付きません。');
+      if (fu === 25 && S.tsumo && han < 3) warns.push('七対子のツモは3翻以上になります。');
+    }
+  }
+  if (ya && !ym && yakuHan() === 0) warns.push('ドラだけでは和了れません。役を1つ以上選んでください。');
+
+  const m = S.melds, mc = meldCount(), fi = fuInfo(), forced = fuForced();
+  const meldCell = function (k) { return stepper('meld', String(m[k]), m[k] > 0, mc < 4, true, k); };
+  const yakuChips = YAKU.map(function (y) {
+    const v = S.menzen ? y[2] : y[3];
+    return '<button type="button" class="chip" data-a="yaku" data-v="' + y[0] + '" aria-pressed="' + !!S.yaku[y[0]] + '"' + (v ? '' : ' disabled') + '>' +
+      y[1] + '<small>' + (v ? v + '翻' : '門前のみ') + '</small></button>';
+  }).join('');
+  const ymChips = YAKUMAN.filter(function (y) { return !y[4] || S.rules.wYakuman; }).map(function (y) {
+    const okv = S.menzen || y[2], w = S.rules.wYakuman && y[3] > 1;
+    return '<button type="button" class="chip" data-a="ym" data-v="' + y[0] + '" aria-pressed="' + !!S.ym[y[0]] + '"' + (okv ? '' : ' disabled') + '>' +
+      y[1] + (okv ? (w ? '<small>ダブル</small>' : '') : '<small>門前のみ</small>') + '</button>';
+  }).join('');
+
+  root.innerHTML =
+    '<div class="result" aria-live="polite">' +
+      '<div class="head"><span>' + head + '</span><span class="limit">' + limit + '</span></div>' +
+      '<div class="num">' + num + '</div><div class="sub">' + sub + '</div>' +
+    '</div>' +
+    warns.map(function (w) { return '<p class="warn">' + w + '</p>'; }).join('') +
+    '<div class="grid3">' + seg('dealer', [[0, '子'], [1, '親']], S.dealer ? 1 : 0) + seg('tsumo', [[0, 'ロン'], [1, 'ツモ']], S.tsumo ? 1 : 0) +
+      seg('menzen', [[1, '門前'], [0, '鳴き']], S.menzen ? 1 : 0) + '</div>' +
+
+    '<details id="d-yaku"><summary>役を選ぶ</summary><div class="body">' +
+      '<p class="note">' + (S.menzen ? '門前の翻数です。' : '鳴いた手の翻数です。食い下がりの役は1翻下がり、門前限定の役は選べません。') + '</p>' +
+      '<div class="chips">' + yakuChips + '</div>' +
+      '<div class="grid2"><div class="lbl">役牌' + stepper('yakuhai', S.yakuhai + '翻', S.yakuhai > 0, S.yakuhai < 4) + '</div>' +
+        '<div class="lbl">ドラ（表・裏・赤' + (S.players === 3 ? '・北' : '') + '）' + stepper('dora', S.dora + '枚', S.dora > 0, S.dora < 30) + '</div></div>' +
+      '<div class="lbl">役満<div class="chips">' + ymChips + '</div></div>' +
+      '<p class="note">門前でツモを選ぶと門前清自摸和の1翻を自動で足します。役満は複数選ぶと複合します。</p>' +
+      '<div><button type="button" class="ghost" data-a="clearYaku" data-v=""' + (ya || ym ? '' : ' disabled') + '>役の選択をすべて外す</button></div>' +
+    '</div></details>' +
+
+    '<div class="row"><h2>翻' + (ya ? '<br><span class="tag">役から</span>' : '') + '</h2>' +
+      '<div class="' + (ym ? 'dim' : '') + '">' + stepper('han', han + '翻', han > 1, han < 26) + '</div></div>' +
+    '<div class="row"><h2>符' + (S.fuAuto && !forced ? '<br><span class="tag">自動</span>' : '') + '</h2>' +
+      '<div class="chips fu' + (fuMatters ? '' : ' dim') + '">' + FUS.map(function (f) {
+        return '<button type="button" class="chip" data-a="fu" data-v="' + f + '" aria-pressed="' + (f === fu) + '"' + (forced ? ' disabled' : '') + '>' + f + '</button>';
+      }).join('') + '</div></div>' +
+    (forced ? '<p class="note">' + forced + 'です。</p>' : fuMatters ? '' : '<p class="note">' + (ym ? '役満' : '5翻以上') + 'は符に関係なく点数が決まります。</p>') +
+    '<div class="row"><h2>本場</h2>' + stepper('honba', S.honba + '本場', S.honba > 0, S.honba < 20) + '</div>' +
+
+    '<details id="d-fu"><summary>符を計算する</summary><div class="body">' +
+      '<div class="melds"><span></span><span class="hd">2〜8の牌</span><span class="hd">1・9・字牌</span>' +
+        '<span>明刻</span>' + meldCell('mk_s') + meldCell('mk_y') +
+        '<span>暗刻</span>' + meldCell('ak_s') + meldCell('ak_y') +
+        '<span>明槓</span>' + meldCell('mg_s') + meldCell('mg_y') +
+        '<span>暗槓</span>' + meldCell('ag_s') + meldCell('ag_y') +
+      '</div>' +
+      '<div class="lbl">雀頭' + seg('pair', [[0, '符なし'], [1, '役牌'], [2, '連風牌']], S.pair) + '</div>' +
+      '<div class="lbl">待ち' + seg('wait', [[0, '両面・双碰'], [1, '嵌張・辺張・単騎']], S.wait ? 1 : 0) + '</div>' +
+      '<p class="calc">' + fi.parts.map(function (p) { return p[0] + ' ' + p[1]; }).join(' ＋ ') + ' ＝ ' + fi.raw + ' → <b>' + fi.fu + '符</b></p>' +
+      '<p class="note">順子は0符なので入力不要です。親子・和了り方・門前/鳴きは上の切り替えを使います。</p>' +
+    '</div></details>' +
+
+    '<details id="d-rule"><summary>点数ルール</summary><div class="body"><div class="chips">' +
+      '<button type="button" class="chip" data-a="rule" data-v="kiriage" aria-pressed="' + S.rules.kiriage + '">切り上げ満貫<small>4翻30符・3翻60符</small></button>' +
+      '<button type="button" class="chip" data-a="rule" data-v="kazoe" aria-pressed="' + S.rules.kazoe + '">数え役満<small>13翻以上</small></button>' +
+      '<button type="button" class="chip" data-a="rule" data-v="wYakuman" aria-pressed="' + S.rules.wYakuman + '">ダブル役満<small>四暗刻単騎など</small></button>' +
+      '<button type="button" class="chip" data-a="rule" data-v="renpu4" aria-pressed="' + S.rules.renpu4 + '">連風牌の雀頭は4符<small>外すと2符</small></button>' +
+      (S.players === 3 ? '<button type="button" class="chip" data-a="rule" data-v="tsumoZon" aria-pressed="' + S.rules.tsumoZon + '">ツモ損あり<small>外すと1人分を折半</small></button>' : '') +
+    '</div><p class="note">Mリーグ基準は、切り上げ満貫あり・数え役満なし・単独のダブル役満なし（役満どうしの複合はあり）・連風牌の雀頭2符です。本場は1本につきロン300点、ツモは各100点で計算します。</p>' +
+    '<div><button type="button" class="ghost" data-a="mleague" data-v="">Mリーグ基準に戻す</button></div></div></details>';
+
+  root.querySelectorAll('details').forEach(function (d) { if (open[d.id] || (d.id === 'd-yaku' && !(d.id in open))) d.open = true; });
+}
+
+// ---- 精算 ----
+function buildSettle() {
+  const n = S.players, ses = S.ses[n], c = S.cfg[n];
+  S.editName = null;
+  $('#rows').innerHTML = ses.names.map(function (nm, i) {
+    return '<div class="prow"><span class="seat">' + SEATS[i] + '</span><span class="nmw" id="nmw' + i + '"></span>' +
+      '<input class="pt" id="pt' + n + '_' + i + '" data-i="' + i + '" inputmode="numeric" autocomplete="off" aria-label="' + SEATS[i] + '家の持ち点">' +
+      '<span class="unit">点</span></div>';
+  }).join('');
+  renderNames();
+  $('#chips').innerHTML = '<div id="chiprows" class="stack" style="gap:8px"></div>' +
+    '<label>チップ1枚あたりのpt<input id="c' + n + '_chipPt" data-c="chipPt" type="number" min="0" step="0.5" value="' + c.chipPt + '"></label>' +
+    '<p class="note">開始時からの増減を枚数で入れます。累計の pt と金額に加算されます。</p>';
+  $('#cfg').innerHTML =
+    '<div class="grid2"><label>持ち点<input id="c' + n + '_start" data-c="start" type="number" step="1000" value="' + c.start + '"></label>' +
+      '<label>返し点<input id="c' + n + '_ret" data-c="ret" type="number" step="1000" value="' + c.ret + '"></label></div>' +
+    '<div class="lbl">ウマ（1位から順に・pt）<div class="uma">' + c.uma.map(function (u, i) {
+      return '<input id="c' + n + '_uma' + i + '" data-c="uma" data-i="' + i + '" type="number" value="' + u + '" aria-label="' + (i + 1) + '位のウマ">';
+    }).join('') + '</div></div>' +
+    '<div class="grid2"><label>端数<select id="c' + n + '_round" data-c="round">' +
+      [['none', '100点単位（小数1桁）'], ['5-6', '1,000点単位・五捨六入'], ['4-5', '1,000点単位・四捨五入'], ['up', '1,000点単位・切り上げ'], ['down', '1,000点単位・切り捨て']].map(function (o) {
+        return '<option value="' + o[0] + '"' + (c.round === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('') + '</select></label>' +
+      '<label>同点のとき<select id="c' + n + '_tie" data-c="tie">' +
+      [['split', '順位点を分ける'], ['seat', '起家に近い人が上位']].map(function (o) {
+        return '<option value="' + o[0] + '"' + (c.tie === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('') + '</select></label></div>' +
+      '<div class="grid2"><label>1ptあたりの金額（0で非表示）<input id="c' + n + '_rate" data-c="rate" type="number" min="0" step="10" value="' + c.rate + '"></label></div>' +
+    '<p class="note">1pt＝1,000点。オカ（返し点と持ち点の差）はトップに入ります。' +
+      (n === 4 ? '初期値はMリーグ基準（25,000点持ち30,000点返し・ウマ10-30・同点は順位点を分ける）です。' : '') +
+      'ルールの変更は、これから記録する半荘にだけ反映されます。</p>' +
+    '<div><button type="button" class="ghost" data-a="cfgReset" data-v="">' + (n === 4 ? 'Mリーグ基準に戻す' : '初期値に戻す') + '</button></div>';
+}
+
+// 名前欄。登録済みの名前から選ぶか、その場で追加する
+function renderNames() {
+  const n = S.players, names = S.ses[n].names;
+  names.forEach(function (nm, i) {
+    const w = $('#nmw' + i);
+    if (!w) return;
+    if (S.editName === i) {
+      w.innerHTML = '<input class="nm" id="nm' + n + '_' + i + '" data-i="' + i + '" maxlength="10" placeholder="名前を入力" autocomplete="off" aria-label="' + SEATS[i] + '家の新しい名前">';
+      return;
+    }
+    const opts = [nm].concat(S.roster.filter(function (r) { return r !== nm; }));
+    w.innerHTML = '<select class="nm" id="nm' + n + '_' + i + '" data-i="' + i + '" aria-label="' + SEATS[i] + '家の名前">' +
+      opts.map(function (o) { return '<option value="' + esc(o) + '"' + (o === nm ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+      '<option value="__new__">＋ 名前を追加…</option></select>';
+  });
+  const ml = $('#memberlist');
+  ml.innerHTML = S.roster.length ? S.roster.map(function (r, i) {
+    return '<button type="button" class="chip" data-a="rmName" data-v="' + i + '" aria-label="' + esc(r) + 'を登録から外す">' + esc(r) + '<small>×</small></button>';
+  }).join('') : '<p class="note">まだ登録がありません。</p>';
+}
+function addRoster(v) {
+  v = String(v).trim().slice(0, 10);
+  if (v && v !== '__new__' && S.roster.indexOf(v) < 0) S.roster.push(v);
+  return v;
+}
+function setName(i, v) { // 他の席が同じ名前なら入れ替える
+  const names = S.ses[S.players].names, j = names.indexOf(v);
+  if (j >= 0 && j !== i) names[j] = names[i];
+  names[i] = v;
+}
+function signed(x, unit) { return (x > 0 ? '+' : x < 0 ? '▲' : '') + fmt(Math.abs(x)) + unit; }
+
+function parsePt(v) {
+  v = String(v).replace(/[,\s，]/g, '').replace(/^[▲－ー−]/, '-');
+  if (v === '') return null;
+  const x = Number(v);
+  return Number.isFinite(x) ? x : NaN;
+}
+
+function renderSettle() {
+  const n = S.players, ses = S.ses[n], c = S.cfg[n], total = c.start * n;
+  const inputs = Array.from(document.querySelectorAll('#rows .pt'));
+  const vals = inputs.map(function (el) { return parsePt(el.value); });
+  const blanks = vals.filter(function (v) { return v === null; }).length;
+  const bad = vals.some(function (v) { return v !== null && (isNaN(v) || v % 100 !== 0); });
+  const known = vals.reduce(function (s, v) { return s + (v || 0); }, 0);
+  inputs.forEach(function (el, i) { el.placeholder = blanks === 1 && vals[i] === null && !bad ? fmt(total - known) : ''; });
+
+  const sum = $('#sum'), pv = $('#preview');
+  S.pending = null;
+  let msg = '', isBad = false;
+  if (bad) { msg = '100点単位の数字で入力してください'; isBad = true; }
+  else if (blanks > 1) msg = blanks === n ? '最後の1人は空欄でも自動で埋まります' : 'あと' + (blanks - 1) + '人分を入力';
+  else {
+    const pts = vals.map(function (v) { return v === null ? total - known : v; });
+    const s = pts.reduce(function (a, b) { return a + b; }, 0);
+    if (s !== total) { msg = (s > total ? fmt(s - total) + '点多い' : fmt(total - s) + '点足りない'); isBad = true; }
+    else { S.pending = { pts: pts, r: settle(pts, c) }; msg = '合計が合いました'; }
+  }
+  sum.className = 'sum' + (isBad ? ' bad' : '');
+  sum.innerHTML = '<span>' + msg + '</span><span>合計 ' + fmt(blanks > 1 || bad ? known : (S.pending ? total : known)) + ' / ' + fmt(total) + '点</span>';
+  pv.hidden = !S.pending;
+  if (S.pending) {
+    const p = S.pending;
+    pv.innerHTML = p.r.order.map(function (i, k) {
+      return '<li><span class="rk">' + p.r.rank[i] + '位</span><span class="nmv">' + esc(ses.names[i]) + '　<span class="unit">' + fmt(p.pts[i]) + '点</span></span>' + ptCell(p.r.res[i]) + '</li>';
+    }).join('');
+  }
+  $('#rec').disabled = !S.pending;
+
+  const hist = $('#history'), games = ses.games, chips = ses.chips;
+  const chipSum = chips.reduce(function (a, b) { return a + b; }, 0), hasChips = chips.some(function (x) { return x !== 0; });
+  $('#chiprows').innerHTML = ses.names.map(function (nm, i) {
+    return '<div class="crow"><span class="nmv">' + esc(nm) + '</span>' + stepper('chip', signed(chips[i], '枚'), true, true, true, String(i)) + '</div>';
+  }).join('') + '<div class="sum' + (chipSum ? ' bad' : '') + '"><span>' +
+    (chipSum ? '増減の合計が' + signed(chipSum, '枚') + 'ずれています' : '増減の合計は0枚で合っています') + '</span></div>';
+
+  const has = games.length > 0 || hasChips;
+  $('#resetwrap').innerHTML = has ? '<button type="button" class="ghost' + (S.arm === 'reset' ? ' armed' : '') + '" data-a="reset" data-v="">' + (S.arm === 'reset' ? 'もう一度押すと全消去' : '記録をすべて消す') + '</button>' : '';
+  if (!has) {
+    hist.innerHTML = '<p class="empty">まだ記録がありません。半荘が終わったら持ち点を入れて「この半荘を記録」を押すと、ここに累計が出ます。</p>';
+    return;
+  }
+  const tot = new Array(n).fill(0);
+  const body = games.map(function (g, gi) {
+    g.res.forEach(function (t, i) { tot[i] += t; });
+    const armed = S.arm === 'del' + gi;
+    return '<tr><td>' + (gi + 1) + '</td>' + g.res.map(function (t) { return '<td>' + ptCell(t) + '</td>'; }).join('') +
+      '<td class="x"><button type="button" class="ghost' + (armed ? ' armed' : '') + '" data-a="del" data-v="' + gi + '" aria-label="' + (gi + 1) + '半荘目を消す">' + (armed ? '消す？' : '×') + '</button></td></tr>';
+  }).join('');
+  const rate = Number(c.rate) || 0, chipPt = Number(c.chipPt) || 0;
+  const grand = tot.map(function (t, i) { return t + Math.round(chips[i] * chipPt * 10); });
+  const cells = function (arr, f) { return arr.map(function (t) { return '<td>' + f(t) + '</td>'; }).join('') + '<td></td></tr>'; };
+  const sgn = function (x, unit) { return '<span class="pts' + (x < 0 ? ' neg' : '') + '">' + signed(x, unit) + '</span>'; };
+  hist.innerHTML = '<div class="scroll"><table><thead><tr><th>半荘</th>' + ses.names.map(function (nm) { return '<th>' + esc(nm) + '</th>'; }).join('') + '<th></th></tr></thead>' +
+    '<tbody>' + body + '</tbody><tfoot>' +
+    (hasChips
+      ? '<tr class="sub"><td>半荘計</td>' + cells(tot, ptCell) +
+        '<tr class="sub"><td>チップ</td>' + cells(chips, function (x) { return sgn(x, '枚'); }) +
+        '<tr><td>合計</td>' + cells(grand, ptCell)
+      : '<tr><td>計</td>' + cells(tot, ptCell)) +
+    (rate > 0 ? '<tr class="yen"><td>金額</td>' + cells(grand, function (t) { return sgn(Math.round(t * rate / 10), ''); }) : '') +
+    '</tfoot></table></div>';
+}
+
+// ---- 操作 ----
+const A = {
+  tab: function (v) { S.tab = v; },
+  players: function (v) { S.players = Number(v); buildSettle(); },
+  dealer: function (v) { S.dealer = v === '1'; },
+  tsumo: function (v) { S.tsumo = v === '1'; },
+  menzen: function (v) {
+    S.menzen = v === '1';
+    if (!S.menzen) {
+      for (const id in S.yaku) if (!YM[id].o) delete S.yaku[id];
+      for (const id in S.ym) if (!YMM[id].open) delete S.ym[id];
+    }
+  },
+  han: function (v) { const cur = effHan(); A.clearYaku(); S.han = clamp(cur + Number(v), 1, 26); },
+  fu: function (v) { S.fu = Number(v); S.fuAuto = false; },
+  honba: function (v) { S.honba = clamp(S.honba + Number(v), 0, 20); },
+  ym: function (id) {
+    if (S.ym[id]) { delete S.ym[id]; return; }
+    YM_EXCL.forEach(function (g) { if (g.indexOf(id) >= 0) g.forEach(function (o) { delete S.ym[o]; }); });
+    S.ym[id] = true;
+  },
+  meld: function (v) {
+    const p = v.split(':'), d = Number(p[1]);
+    if (d > 0 && meldCount() >= 4) return;
+    S.melds[p[0]] = clamp(S.melds[p[0]] + d, 0, 4); S.fuAuto = true;
+  },
+  pair: function (v) { S.pair = Number(v); S.fuAuto = true; },
+  wait: function (v) { S.wait = v === '1'; S.fuAuto = true; },
+  yaku: function (id) {
+    if (S.yaku[id]) { delete S.yaku[id]; return; }
+    EXCL.forEach(function (g) { if (g.indexOf(id) >= 0) g.forEach(function (o) { delete S.yaku[o]; }); });
+    S.yaku[id] = true;
+  },
+  yakuhai: function (v) { S.yakuhai = clamp(S.yakuhai + Number(v), 0, 4); },
+  dora: function (v) { S.dora = clamp(S.dora + Number(v), 0, 30); },
+  clearYaku: function () { S.yaku = {}; S.ym = {}; S.yakuhai = 0; S.dora = 0; },
+  rule: function (v) { S.rules[v] = !S.rules[v]; dropDoubles(); },
+  mleague: function () { Object.assign(S.rules, mRules()); dropDoubles(); },
+  cfgReset: function () { const n = S.players; S.cfg[n] = Object.assign(defCfg(n), { rate: S.cfg[n].rate, chipPt: S.cfg[n].chipPt }); buildSettle(); },
+  record: function () {
+    if (!S.pending) return;
+    S.ses[S.players].games.push({ pts: S.pending.pts, res: S.pending.r.res });
+    document.querySelectorAll('#rows .pt').forEach(function (el) { el.value = ''; });
+  },
+  del: function (v) {
+    if (S.arm !== 'del' + v) { S.arm = 'del' + v; return; }
+    S.ses[S.players].games.splice(Number(v), 1); S.arm = null;
+  },
+  reset: function () {
+    if (S.arm !== 'reset') { S.arm = 'reset'; return; }
+    S.ses[S.players].games = []; S.ses[S.players].chips = new Array(S.players).fill(0); S.arm = null;
+  },
+  chip: function (v) {
+    const p = v.split(':'), ch = S.ses[S.players].chips;
+    ch[Number(p[0])] = clamp(ch[Number(p[0])] + Number(p[1]), -999, 999);
+  },
+  addName: function () { const el = $('#newname'); addRoster(el.value); el.value = ''; renderNames(); },
+  rmName: function (v) { S.roster.splice(Number(v), 1); renderNames(); }
+};
+
+function dropDoubles() { if (!S.rules.wYakuman) for (const id in S.ym) if (YMM[id].only) delete S.ym[id]; }
+
+function render(focusKey) {
+  $('#mode').innerHTML = seg('players', [[4, '四麻'], [3, '三麻']], S.players);
+  document.querySelectorAll('#tabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.v === S.tab); });
+  $('#tab-score').hidden = S.tab !== 'score';
+  $('#tab-settle').hidden = S.tab !== 'settle';
+  renderScore();
+  renderSettle();
+  if (focusKey) {
+    const els = document.querySelectorAll('[data-a]');
+    for (let i = 0; i < els.length; i++) {
+      if (els[i].dataset.a + '|' + els[i].dataset.v === focusKey && !els[i].disabled && els[i].offsetParent) { els[i].focus({ preventScroll: true }); break; }
+    }
+  }
+}
+
+document.addEventListener('click', function (e) {
+  const b = e.target.closest('[data-a]');
+  if (!b || b.disabled) return;
+  const a = b.dataset.a, v = b.dataset.v;
+  if (a !== 'del' && a !== 'reset') S.arm = null;
+  A[a](v);
+  save();
+  render(a + '|' + v);
+});
+document.addEventListener('input', function (e) {
+  const el = e.target, n = S.players;
+  if (el.classList.contains('nm')) {
+    if (el.tagName !== 'SELECT') return; // 新しい名前は確定（change）時に反映
+    const i = Number(el.dataset.i);
+    if (el.value === '__new__') { S.editName = i; renderNames(); $('#nmw' + i + ' input').focus(); return; }
+    setName(i, el.value);
+    renderNames();
+  } else if (el.id === 'newname') { return;
+  } else if (el.dataset.c) {
+    const c = S.cfg[n], k = el.dataset.c;
+    if (k === 'uma') c.uma[Number(el.dataset.i)] = Number(el.value) || 0;
+    else if (k === 'round' || k === 'tie') c[k] = el.value;
+    else c[k] = Number(el.value) || 0;
+  } else if (!el.classList.contains('pt')) return;
+  save();
+  renderSettle();
+});
+
+function commitName(el) {
+  const i = Number(el.dataset.i);
+  if (S.editName !== i) return;
+  S.editName = null;
+  const v = addRoster(el.value);
+  if (v) setName(i, v);
+  renderNames();
+  save();
+  renderSettle();
+}
+document.addEventListener('change', function (e) {
+  const el = e.target;
+  if (el.tagName === 'INPUT' && el.classList.contains('nm')) commitName(el);
+});
+document.addEventListener('focusout', function (e) {
+  const el = e.target;
+  if (el.tagName === 'INPUT' && el.classList.contains('nm')) setTimeout(function () { if (el.isConnected) commitName(el); }, 0);
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || e.isComposing) return;
+  const el = e.target;
+  if (el.tagName === 'INPUT' && el.classList.contains('nm')) { e.preventDefault(); commitName(el); }
+  else if (el.id === 'newname') { e.preventDefault(); A.addName(); save(); renderSettle(); }
+});
+
+buildSettle();
+render();
+</script>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+</script>
+</body>
+</html>
