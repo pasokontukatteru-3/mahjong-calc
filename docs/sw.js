@@ -1,4 +1,4 @@
-const CACHE = 'mahjong-calc-322e17bacd';
+const CACHE = 'mahjong-calc-d6c3694d58';
 const SHELL = ['./', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));

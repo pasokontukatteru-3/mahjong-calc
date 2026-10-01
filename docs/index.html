@@ -145,6 +145,9 @@ tfoot td { font-weight: 700; font-size: 16px; border-bottom: 0; }
 tfoot tr.yen td { font-size: 13px; font-weight: 500; padding-top: 0; }
 td.x { width: 1%; padding-right: 0; }
 td.x .ghost { min-height: 30px; padding: 2px 8px; }
+table.stats td { font-size: 14px; }
+table.stats td:first-child { color: var(--fg); font-size: 14px; font-weight: 700; }
+table.stats th, table.stats td { padding-inline: 5px; }
 small.raw { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
 .hsum { display: block; margin-top: 4px; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .hsum .pts { margin-right: 8px; }
@@ -631,6 +634,41 @@ function sessionTable(names, games, chips, rate, chipPt, deletable) {
   return { html: html, grand: grand };
 }
 
+// 名前ごとの通算。保存済みの対局のうち、いま選んでいる人数（四麻／三麻）のものを集計する
+function statsHTML() {
+  const n = S.players, map = {}, order = [];
+  let anyRate = false;
+  S.archive.forEach(function (a) {
+    if (a.names.length !== n) return;
+    const chips = Array.isArray(a.chips) ? a.chips : [], rate = Number(a.rate) || 0, chipPt = Number(a.chipPt) || 0;
+    if (rate > 0) anyRate = true;
+    a.names.forEach(function (nm, i) {
+      if (!map[nm]) { map[nm] = { games: 0, pt: 0, yen: 0, ranks: new Array(n).fill(0), rankSum: 0, ranked: 0 }; order.push(nm); }
+      const s = map[nm];
+      let ses = Math.round((chips[i] || 0) * chipPt * 10);
+      a.games.forEach(function (g) {
+        s.games++; ses += g.res[i];
+        if (g.pts) { // 同点は同じ順位として数える
+          const r = g.pts.filter(function (p) { return p > g.pts[i]; }).length;
+          s.ranks[r]++; s.rankSum += r + 1; s.ranked++;
+        }
+      });
+      s.pt += ses; s.yen += Math.round(ses * rate / 10);
+    });
+  });
+  if (!order.length) return '';
+  order.sort(function (x, y) { return map[y].pt - map[x].pt; });
+  const mode = n === 4 ? '四麻' : '三麻';
+  return '<details id="d-stats"><summary>通算成績（' + mode + '）</summary><div class="body"><div class="scroll"><table class="stats"><thead><tr>' +
+    '<th>名前</th><th>半荘</th><th>合計</th><th>平均順位</th><th>' + (n === 4 ? '1-2-3-4位' : '1-2-3位') + '</th>' + (anyRate ? '<th>金額</th>' : '') + '</tr></thead><tbody>' +
+    order.map(function (nm) {
+      const s = map[nm];
+      return '<tr><td>' + esc(nm) + '</td><td>' + s.games + '</td><td>' + ptCell(s.pt) + '</td><td>' + (s.ranked ? (s.rankSum / s.ranked).toFixed(2) : '—') + '</td><td>' + s.ranks.join('-') + '</td>' +
+        (anyRate ? '<td><span class="pts' + (s.yen < 0 ? ' neg' : '') + '">' + signed(s.yen, '') + '</span></td>' : '') + '</tr>';
+    }).join('') + '</tbody></table></div>' +
+    '<p class="note">履歴に保存した' + mode + 'の対局が対象です。合計はチップ込みの pt、同点は同じ順位として数えます。' + (n === 4 ? '三麻' : '四麻') + 'の成績は右上で切り替えると見られます。</p></div></details>';
+}
+
 function renderHistory() {
   const root = $('#tab-history'), open = {}, cur = S.ses[S.players];
   root.querySelectorAll('details').forEach(function (d) { open[d.id] = d.open; });
@@ -638,6 +676,7 @@ function renderHistory() {
   if (!S.archive.length) {
     html += '<p class="empty">保存した対局はまだありません。「精算」で半荘を記録し、「この対局を履歴に保存して終了」を押すと、日付ごとにここへ残ります。</p>';
   } else {
+    html += statsHTML() || '<p class="note">' + (S.players === 4 ? '四麻' : '三麻') + 'の対局はまだ保存されていません。</p>';
     html += S.archive.slice().reverse().map(function (a) {
       const chips = Array.isArray(a.chips) ? a.chips : new Array(a.names.length).fill(0);
       const t = sessionTable(a.names, a.games, chips, Number(a.rate) || 0, Number(a.chipPt) || 0, false);
@@ -650,7 +689,7 @@ function renderHistory() {
   }
   root.innerHTML = html;
   const newest = S.archive.length ? 'h' + S.archive[S.archive.length - 1].id : '';
-  root.querySelectorAll('details').forEach(function (d) { if (d.id in open ? open[d.id] : d.id === newest) d.open = true; });
+  root.querySelectorAll('details').forEach(function (d) { if (d.id in open ? open[d.id] : (d.id === newest || d.id === 'd-stats')) d.open = true; });
 }
 
 function parsePt(v) {
